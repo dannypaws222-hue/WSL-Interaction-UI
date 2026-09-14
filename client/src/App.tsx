@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Dashboard } from './components/Dashboard';
+import { AgentsRoster } from './components/AgentsRoster';
+import { AgentPanel } from './components/AgentPanel';
 import { SnapshotSocketClient, type SnapshotSocketStatus } from './api/snapshotSocket';
 import { resolveToken } from './api/client';
-import type { PollSnapshot, HookStatus, MailMessage, RigSummary, BeadSummary, SnapshotMessage } from './api/types';
+import type { PollSnapshot, HookStatus, MailMessage, RigSummary, BeadSummary, SnapshotMessage, AgentSummary } from './api/types';
 
 export function App() {
   const [hook, setHook] = useState<PollSnapshot<HookStatus> | null>(null);
   const [mail, setMail] = useState<PollSnapshot<MailMessage[]> | null>(null);
   const [rigs, setRigs] = useState<PollSnapshot<RigSummary[]> | null>(null);
   const [beads, setBeads] = useState<PollSnapshot<BeadSummary[]> | null>(null);
+  const [agents, setAgents] = useState<PollSnapshot<AgentSummary[]> | null>(null);
+  const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [status, setStatus] = useState<SnapshotSocketStatus>('connecting');
   const [hasToken] = useState<boolean>(() => resolveToken() !== null);
 
@@ -22,6 +26,7 @@ export function App() {
         if (msg.resource === 'mail') setMail(msg.snapshot);
         if (msg.resource === 'rigs') setRigs(msg.snapshot);
         if (msg.resource === 'beads') setBeads(msg.snapshot);
+        if (msg.resource === 'agents') setAgents(msg.snapshot);
       },
     });
     return () => client.close();
@@ -43,6 +48,10 @@ export function App() {
       <h1>Allay</h1>
       {status !== 'open' && <p role="alert">{status === 'reconnecting' ? 'Reconnecting to server…' : 'Connecting…'}</p>}
       <Dashboard hook={hook} mail={mail} rigs={rigs} beads={beads} />
+      <AgentsRoster agents={agents} selectedSession={selectedSession} onSelect={setSelectedSession} />
+      {selectedSession && (
+        <AgentPanel key={selectedSession} session={selectedSession} onClose={() => setSelectedSession(null)} />
+      )}
     </main>
   );
 }
