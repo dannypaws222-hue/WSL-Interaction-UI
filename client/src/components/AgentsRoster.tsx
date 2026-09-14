@@ -26,6 +26,7 @@ export function AgentsRoster({ agents, selectedSession, onSelect }: AgentsRoster
                 <button
                   onClick={() => onSelect(agent.session)}
                   aria-pressed={agent.session === selectedSession}
+                  disabled={!agent.running}
                 >
                   {agent.name}
                 </button>

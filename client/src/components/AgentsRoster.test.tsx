@@ -60,4 +60,38 @@ describe('AgentsRoster', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('boom');
     expect(screen.getByText('mayor')).toBeInTheDocument();
   });
+
+  it('disables the row button for a non-running agent', () => {
+    const snapshot = sampleSnapshot();
+    snapshot.data = [
+      { name: 'stopped-polecat', address: 'allay/polecat-1', session: 'al-polecat-1', role: 'polecat', rig: 'allay', running: false, state: 'idle', hasWork: false },
+    ];
+    render(<AgentsRoster agents={snapshot} selectedSession={null} onSelect={() => {}} />);
+
+    const button = screen.getByRole('button', { name: 'stopped-polecat' });
+    expect(button).toBeDisabled();
+    expect(screen.getByText('stopped')).toBeInTheDocument();
+  });
+
+  it('does not call onSelect when clicking a disabled (non-running) agent button', () => {
+    const onSelect = vi.fn();
+    const snapshot = sampleSnapshot();
+    snapshot.data = [
+      { name: 'stopped-polecat', address: 'allay/polecat-1', session: 'al-polecat-1', role: 'polecat', rig: 'allay', running: false, state: 'idle', hasWork: false },
+    ];
+    render(<AgentsRoster agents={snapshot} selectedSession={null} onSelect={onSelect} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'stopped-polecat' }));
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('leaves the row button enabled for a running agent, even with no work', () => {
+    const snapshot = sampleSnapshot();
+    snapshot.data = [
+      { name: 'idle-witness', address: 'allay/witness', session: 'al-witness', role: 'witness', rig: 'allay', running: true, state: 'idle', hasWork: false },
+    ];
+    render(<AgentsRoster agents={snapshot} selectedSession={null} onSelect={() => {}} />);
+
+    expect(screen.getByRole('button', { name: 'idle-witness' })).not.toBeDisabled();
+  });
 });
