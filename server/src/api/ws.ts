@@ -18,6 +18,10 @@ export function attachSnapshotSocket(
 ): WebSocketServer {
   const wss = new WebSocketServer({ noServer: true });
 
+  wss.on('error', (err) => {
+    console.error('[allay] websocket server error:', err);
+  });
+
   server.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url ?? '', 'http://localhost');
     const origin = req.headers.origin;
@@ -37,6 +41,10 @@ export function attachSnapshotSocket(
 
   wss.on('connection', (ws: WebSocket) => {
     const unsubscribers: Array<() => void> = [];
+
+    ws.on('error', (err) => {
+      console.error('[allay] websocket connection error:', err);
+    });
 
     function wire<K extends keyof PollerMap>(resource: K) {
       const source = pollers[resource];

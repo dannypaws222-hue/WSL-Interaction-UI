@@ -51,10 +51,10 @@ function nextNMessages(ws: WebSocket, n: number): Promise<any[]> {
 
 async function startServer(pollers: PollerMap) {
   const server = createServer();
-  attachSnapshotSocket(server, pollers, () => 'tok');
+  const wss = attachSnapshotSocket(server, pollers, () => 'tok');
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const port = (server.address() as AddressInfo).port;
-  return { server, port };
+  return { server, port, wss };
 }
 
 describe('attachSnapshotSocket', () => {
@@ -205,6 +205,44 @@ describe('attachSnapshotSocket', () => {
     });
 
     ws.close();
+    server.close();
+  });
+
+  it('does not crash on a protocol-level error and keeps serving new connections', async () => {
+    const pollers = buildPollers();
+    const { server, port, wss } = await startServer(pollers);
+
+    const serverWsPromise = new Promise<WebSocket>((resolve) => {
+      wss.once('connection', (ws) => resolve(ws));
+    });
+
+    const wsA = new WebSocket(`ws://127.0.0.1:${port}/ws?token=tok`);
+    const initialA = nextNMessages(wsA, 4);
+    await new Promise<void>((resolve) => wsA.on('open', resolve));
+    await initialA;
+
+    const serverWs = await serverWsPromise;
+
+    // Simulate a protocol-level error on the server-side connection socket,
+    // as would happen with a malformed frame from a misbehaving client.
+    // `ws` sockets are EventEmitters: without a server-side 'error' listener
+    // attached inside the connection handler, this emit would throw
+    // synchronously here (and, in production, be an uncaught exception that
+    // crashes the whole Node process).
+    expect(() => serverWs.emit('error', new Error('simulated protocol error'))).not.toThrow();
+
+    // The server must still be able to serve a brand-new connection afterward.
+    const wsB = new WebSocket(`ws://127.0.0.1:${port}/ws?token=tok`);
+    const initialB = nextNMessages(wsB, 4);
+    await new Promise<void>((resolve, reject) => {
+      wsB.on('open', resolve);
+      wsB.on('error', reject);
+    });
+    const messagesB = await initialB;
+    expect(new Set(messagesB.map((m) => m.resource))).toEqual(new Set(['hook', 'mail', 'rigs', 'beads']));
+
+    wsA.close();
+    wsB.close();
     server.close();
   });
 });
