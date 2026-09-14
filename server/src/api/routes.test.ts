@@ -3,7 +3,7 @@ import express from 'express';
 import { describe, it, expect } from 'vitest';
 import { createApiRouter, type PollerMap } from './routes.js';
 import type { PollSnapshot } from '../poll-scheduler/poller.js';
-import type { HookStatus, MailMessage, RigSummary, BeadSummary } from '../cli-adapter/types.js';
+import type { HookStatus, MailMessage, RigSummary, BeadSummary, AgentSummary } from '../cli-adapter/types.js';
 
 function fakeSource<T>(snapshot: PollSnapshot<T>) {
   return { getSnapshot: () => snapshot, onUpdate: () => () => {} };
@@ -15,6 +15,7 @@ function buildPollers(): PollerMap {
     mail: fakeSource<MailMessage[]>({ data: [], lastSuccessAt: 1, lastError: null, isStale: false }),
     rigs: fakeSource<RigSummary[]>({ data: [], lastSuccessAt: 1, lastError: null, isStale: false }),
     beads: fakeSource<BeadSummary[]>({ data: [], lastSuccessAt: 1, lastError: null, isStale: false }),
+    agents: fakeSource<AgentSummary[]>({ data: [{ name: 'mayor', address: 'mayor/', session: 'hq-mayor', role: 'coordinator', rig: null, running: true, state: 'idle', hasWork: false }], lastSuccessAt: 1, lastError: null, isStale: false }),
   };
 }
 
@@ -41,5 +42,11 @@ describe('createApiRouter', () => {
   it.each(['hook', 'mail', 'rigs', 'beads'])('exposes a %s route', async (resource) => {
     const res = await request(buildApp()).get(`/api/status/${resource}`).set('x-allay-token', token);
     expect(res.status).toBe(200);
+  });
+
+  it('exposes an agents route', async () => {
+    const res = await request(buildApp()).get('/api/status/agents').set('x-allay-token', token);
+    expect(res.status).toBe(200);
+    expect(res.body.data[0].session).toBe('hq-mayor');
   });
 });

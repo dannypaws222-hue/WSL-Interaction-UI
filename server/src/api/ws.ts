@@ -3,13 +3,14 @@ import type { Server } from 'node:http';
 import { verifyWsToken, isAllowedLocalOrigin, isAllowedLocalHost } from '../auth/token.js';
 import type { PollSnapshot } from '../poll-scheduler/poller.js';
 import type { PollerMap } from './routes.js';
-import type { HookStatus, MailMessage, RigSummary, BeadSummary } from '../cli-adapter/types.js';
+import type { HookStatus, MailMessage, RigSummary, BeadSummary, AgentSummary } from '../cli-adapter/types.js';
 
 export type SnapshotMessage =
   | { type: 'snapshot'; resource: 'hook'; snapshot: PollSnapshot<HookStatus> }
   | { type: 'snapshot'; resource: 'mail'; snapshot: PollSnapshot<MailMessage[]> }
   | { type: 'snapshot'; resource: 'rigs'; snapshot: PollSnapshot<RigSummary[]> }
-  | { type: 'snapshot'; resource: 'beads'; snapshot: PollSnapshot<BeadSummary[]> };
+  | { type: 'snapshot'; resource: 'beads'; snapshot: PollSnapshot<BeadSummary[]> }
+  | { type: 'snapshot'; resource: 'agents'; snapshot: PollSnapshot<AgentSummary[]> };
 
 export function attachSnapshotSocket(
   server: Server,
@@ -61,6 +62,7 @@ export function attachSnapshotSocket(
     wire('mail');
     wire('rigs');
     wire('beads');
+    wire('agents');
 
     ws.on('close', () => unsubscribers.forEach((unsub) => unsub()));
   });

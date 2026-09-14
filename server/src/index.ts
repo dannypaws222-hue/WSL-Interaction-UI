@@ -4,7 +4,7 @@ import path from 'node:path';
 import { createApp } from './app.js';
 import { attachSnapshotSocket } from './api/ws.js';
 import { getOrCreateToken } from './auth/token.js';
-import { getHook, getMailInbox, getRigList } from './cli-adapter/gt.js';
+import { getHook, getMailInbox, getRigList, getAgents } from './cli-adapter/gt.js';
 import { listIssues } from './cli-adapter/bd.js';
 import { Poller } from './poll-scheduler/poller.js';
 
@@ -18,12 +18,14 @@ const pollers = {
   mail: new Poller(getMailInbox, { intervalMs: 5000 }),
   rigs: new Poller(getRigList, { intervalMs: 5000 }),
   beads: new Poller(() => listIssues({ status: 'open' }), { intervalMs: 5000 }),
+  agents: new Poller(getAgents, { intervalMs: 5000 }),
 };
 
 pollers.hook.start();
 pollers.mail.start();
 pollers.rigs.start();
 pollers.beads.start();
+pollers.agents.start();
 
 const app = createApp(pollers, () => token);
 const server = createServer(app);
@@ -39,6 +41,7 @@ function shutdown(): void {
   pollers.mail.stop();
   pollers.rigs.stop();
   pollers.beads.stop();
+  pollers.agents.stop();
   server.close();
 }
 

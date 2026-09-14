@@ -16,6 +16,7 @@ function buildPollers(): PollerMap {
     mail: fakeSource([]),
     rigs: fakeSource([]),
     beads: fakeSource([]),
+    agents: fakeSource<import('./cli-adapter/types.js').AgentSummary[]>([{ name: 'mayor', address: 'mayor/', session: 'hq-mayor', role: 'coordinator', rig: null, running: true, state: 'idle', hasWork: false }]),
   };
 }
 

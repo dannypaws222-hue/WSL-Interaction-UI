@@ -4,7 +4,7 @@ import type { AddressInfo } from 'node:net';
 import WebSocket from 'ws';
 import { attachSnapshotSocket } from './ws.js';
 import type { PollSnapshot, Observable } from '../poll-scheduler/poller.js';
-import type { HookStatus, MailMessage, RigSummary, BeadSummary } from '../cli-adapter/types.js';
+import type { HookStatus, MailMessage, RigSummary, BeadSummary, AgentSummary } from '../cli-adapter/types.js';
 import type { PollerMap } from './routes.js';
 
 function fakeObservable<T>(initial: PollSnapshot<T>): Observable<T> & { emit: (s: PollSnapshot<T>) => void; unsubscribeCount: number } {
@@ -30,12 +30,14 @@ function buildPollers(): PollerMap & {
   mail: ReturnType<typeof fakeObservable<MailMessage[]>>;
   rigs: ReturnType<typeof fakeObservable<RigSummary[]>>;
   beads: ReturnType<typeof fakeObservable<BeadSummary[]>>;
+  agents: ReturnType<typeof fakeObservable<AgentSummary[]>>;
 } {
   return {
     hook: fakeObservable<HookStatus>({ data: { target: 'mayor/', role: 'mayor', agent_bead_id: 'hq-mayor', has_work: false, is_wisp: false, next_action: '' }, lastSuccessAt: 1, lastError: null, isStale: false }),
     mail: fakeObservable<MailMessage[]>({ data: [], lastSuccessAt: 1, lastError: null, isStale: false }),
     rigs: fakeObservable<RigSummary[]>({ data: [], lastSuccessAt: 1, lastError: null, isStale: false }),
     beads: fakeObservable<BeadSummary[]>({ data: [], lastSuccessAt: 1, lastError: null, isStale: false }),
+    agents: fakeObservable<AgentSummary[]>({ data: [{ name: 'mayor', address: 'mayor/', session: 'hq-mayor', role: 'coordinator', rig: null, running: true, state: 'idle', hasWork: false }], lastSuccessAt: 1, lastError: null, isStale: false }),
   };
 }
 
@@ -58,16 +60,16 @@ async function startServer(pollers: PollerMap) {
 }
 
 describe('attachSnapshotSocket', () => {
-  it('sends all four initial snapshots on connect', async () => {
+  it('sends all five initial snapshots on connect', async () => {
     const pollers = buildPollers();
     const { server, port } = await startServer(pollers);
 
     const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?token=tok`);
-    const initial = nextNMessages(ws, 4);
+    const initial = nextNMessages(ws, 5);
     await new Promise<void>((resolve) => ws.on('open', resolve));
     const messages = await initial;
 
-    expect(new Set(messages.map((m) => m.resource))).toEqual(new Set(['hook', 'mail', 'rigs', 'beads']));
+    expect(new Set(messages.map((m) => m.resource))).toEqual(new Set(['hook', 'mail', 'rigs', 'beads', 'agents']));
 
     ws.close();
     server.close();
@@ -78,9 +80,9 @@ describe('attachSnapshotSocket', () => {
     const { server, port } = await startServer(pollers);
 
     const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?token=tok`);
-    const first4 = nextNMessages(ws, 4);
+    const first5 = nextNMessages(ws, 5);
     await new Promise<void>((resolve) => ws.on('open', resolve));
-    await first4;
+    await first5;
 
     const next = nextNMessages(ws, 1);
     pollers.hook.emit({ data: { target: 'mayor/', role: 'mayor', agent_bead_id: 'hq-mayor', has_work: true, is_wisp: false, next_action: '' }, lastSuccessAt: 2, lastError: null, isStale: false });
@@ -93,14 +95,34 @@ describe('attachSnapshotSocket', () => {
     server.close();
   });
 
+  it('broadcasts an update to a connected client for the agents resource', async () => {
+    const pollers = buildPollers();
+    const { server, port } = await startServer(pollers);
+
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?token=tok`);
+    const first5 = nextNMessages(ws, 5);
+    await new Promise<void>((resolve) => ws.on('open', resolve));
+    await first5;
+
+    const next = nextNMessages(ws, 1);
+    pollers.agents.emit({ data: [{ name: 'mayor', address: 'mayor/', session: 'hq-mayor', role: 'coordinator', rig: null, running: true, state: 'busy', hasWork: true }], lastSuccessAt: 2, lastError: null, isStale: false });
+    const [update] = await next;
+
+    expect(update.resource).toBe('agents');
+    expect(update.snapshot.data[0].state).toBe('busy');
+
+    ws.close();
+    server.close();
+  });
+
   it('broadcasts to two simultaneous clients independently', async () => {
     const pollers = buildPollers();
     const { server, port } = await startServer(pollers);
 
     const wsA = new WebSocket(`ws://127.0.0.1:${port}/ws?token=tok`);
     const wsB = new WebSocket(`ws://127.0.0.1:${port}/ws?token=tok`);
-    const initialA = nextNMessages(wsA, 4);
-    const initialB = nextNMessages(wsB, 4);
+    const initialA = nextNMessages(wsA, 5);
+    const initialB = nextNMessages(wsB, 5);
     await Promise.all([
       new Promise<void>((resolve) => wsA.on('open', resolve)),
       new Promise<void>((resolve) => wsB.on('open', resolve)),
@@ -126,7 +148,7 @@ describe('attachSnapshotSocket', () => {
     const { server, port } = await startServer(pollers);
 
     const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?token=tok`);
-    const initial = nextNMessages(ws, 4);
+    const initial = nextNMessages(ws, 5);
     await new Promise<void>((resolve) => ws.on('open', resolve));
     await initial;
 
@@ -217,7 +239,7 @@ describe('attachSnapshotSocket', () => {
     });
 
     const wsA = new WebSocket(`ws://127.0.0.1:${port}/ws?token=tok`);
-    const initialA = nextNMessages(wsA, 4);
+    const initialA = nextNMessages(wsA, 5);
     await new Promise<void>((resolve) => wsA.on('open', resolve));
     await initialA;
 
@@ -233,13 +255,13 @@ describe('attachSnapshotSocket', () => {
 
     // The server must still be able to serve a brand-new connection afterward.
     const wsB = new WebSocket(`ws://127.0.0.1:${port}/ws?token=tok`);
-    const initialB = nextNMessages(wsB, 4);
+    const initialB = nextNMessages(wsB, 5);
     await new Promise<void>((resolve, reject) => {
       wsB.on('open', resolve);
       wsB.on('error', reject);
     });
     const messagesB = await initialB;
-    expect(new Set(messagesB.map((m) => m.resource))).toEqual(new Set(['hook', 'mail', 'rigs', 'beads']));
+    expect(new Set(messagesB.map((m) => m.resource))).toEqual(new Set(['hook', 'mail', 'rigs', 'beads', 'agents']));
 
     wsA.close();
     wsB.close();
