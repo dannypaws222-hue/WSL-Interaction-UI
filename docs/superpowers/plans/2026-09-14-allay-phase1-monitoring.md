@@ -1862,10 +1862,10 @@ git commit -m "feat: add Host/Origin/token-gated WebSocket snapshot broadcaster"
 
 **Files:**
 - Create: `server/src/index.ts`
-- Create: `client/vite.config.ts` proxy section (this task adds the proxy
-  config even though the rest of the client doesn't exist until Tasks
-  11–13, so the dev-proxy decision is made once, here, alongside the
-  server it points at)
+
+(Task 10 does not create any client files — `client/` doesn't exist yet.
+It only fixes the server port this task's smoke test and Task 11's dev
+proxy must agree on; Task 11 is what actually creates `client/vite.config.ts`.)
 
 **Interfaces:**
 - Consumes: `getHook`/`getMailInbox`/`getRigList` (Task 4), `listIssues` (Task 5), `Poller` (Task 6), `getOrCreateToken` (Task 7), `createApp` (Task 8), `attachSnapshotSocket` (Task 9)
