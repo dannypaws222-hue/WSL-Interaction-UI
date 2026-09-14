@@ -43,8 +43,26 @@ export interface BeadSummary {
   issue_type: string;
 }
 
+export interface AgentSummary {
+  name: string;
+  address: string;
+  session: string;
+  role: string;
+  rig: string | null;
+  running: boolean;
+  state: string;
+  hasWork: boolean;
+}
+
+export interface PaneResponse {
+  session: string;
+  pane: string;
+  capturedAt: number;
+}
+
 export type SnapshotMessage =
   | { type: 'snapshot'; resource: 'hook'; snapshot: PollSnapshot<HookStatus> }
   | { type: 'snapshot'; resource: 'mail'; snapshot: PollSnapshot<MailMessage[]> }
   | { type: 'snapshot'; resource: 'rigs'; snapshot: PollSnapshot<RigSummary[]> }
-  | { type: 'snapshot'; resource: 'beads'; snapshot: PollSnapshot<BeadSummary[]> };
+  | { type: 'snapshot'; resource: 'beads'; snapshot: PollSnapshot<BeadSummary[]> }
+  | { type: 'snapshot'; resource: 'agents'; snapshot: PollSnapshot<AgentSummary[]> };
