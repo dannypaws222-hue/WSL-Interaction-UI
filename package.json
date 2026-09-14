@@ -6,6 +6,10 @@
     "client"
   ],
   "scripts": {
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspace server && (cd client && npx tsc --noEmit)"
+  },
+  "overrides": {
+    "qs": "6.16.0"
   }
 }

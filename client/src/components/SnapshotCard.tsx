@@ -33,7 +33,7 @@ export function SnapshotCard<T>({ title, snapshot, renderData }: SnapshotCardPro
         <p role="alert">Stale data{snapshot.lastError ? `: ${snapshot.lastError}` : ''}</p>
       )}
       {renderData(snapshot.data)}
-      {snapshot.lastSuccessAt && (
+      {snapshot.lastSuccessAt != null && (
         <p>Updated {new Date(snapshot.lastSuccessAt).toLocaleTimeString()}</p>
       )}
     </section>

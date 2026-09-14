@@ -55,6 +55,22 @@ describe('SnapshotSocketClient', () => {
     expect(messages).toHaveLength(1);
   });
 
+  it('ignores a malformed message instead of throwing inside the event handler', () => {
+    const messages: unknown[] = [];
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    new SnapshotSocketClient({
+      baseWsUrl: '',
+      onMessage: (m) => messages.push(m),
+      WebSocketImpl: FakeWebSocket as any,
+    });
+
+    expect(() => FakeWebSocket.instances[0].emit('message', { data: 'not json' })).not.toThrow();
+    expect(messages).toHaveLength(0);
+    expect(consoleError).toHaveBeenCalled();
+
+    consoleError.mockRestore();
+  });
+
   it('reconnects with an increasing delay after an unexpected close, and resets it on the next open', () => {
     vi.useFakeTimers();
     const statuses: string[] = [];

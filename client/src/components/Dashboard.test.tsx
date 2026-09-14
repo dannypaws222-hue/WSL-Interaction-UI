@@ -1,8 +1,12 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { render, screen, cleanup } from '@testing-library/react';
+import { describe, it, expect, afterEach } from 'vitest';
 import { Dashboard } from './Dashboard';
 
 describe('Dashboard', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it('renders all four sections with their data', () => {
     render(
       <Dashboard
@@ -17,5 +21,20 @@ describe('Dashboard', () => {
     expect(screen.getByText(/Wisp Compaction/)).toBeInTheDocument();
     expect(screen.getByText(/allay: witness=running/)).toBeInTheDocument();
     expect(screen.getByText(/al-1: Do a thing/)).toBeInTheDocument();
+  });
+
+  it('shows a "no items" fallback for empty Mail/Rigs/Beads lists instead of a blank list', () => {
+    render(
+      <Dashboard
+        hook={{ data: { target: 'mayor/', role: 'mayor', agent_bead_id: 'hq-mayor', has_work: false, is_wisp: false, next_action: '' }, lastSuccessAt: 1, lastError: null, isStale: false }}
+        mail={{ data: [], lastSuccessAt: 1, lastError: null, isStale: false }}
+        rigs={{ data: [], lastSuccessAt: 1, lastError: null, isStale: false }}
+        beads={{ data: [], lastSuccessAt: 1, lastError: null, isStale: false }}
+      />
+    );
+
+    expect(screen.getByText('No mail')).toBeInTheDocument();
+    expect(screen.getByText('No rigs')).toBeInTheDocument();
+    expect(screen.getByText('No open items')).toBeInTheDocument();
   });
 });

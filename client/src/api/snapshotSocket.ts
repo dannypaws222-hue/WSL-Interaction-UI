@@ -44,7 +44,14 @@ export class SnapshotSocketClient {
     });
 
     ws.addEventListener('message', (event: any) => {
-      this.options.onMessage(JSON.parse(event.data as string) as SnapshotMessage);
+      let msg: SnapshotMessage;
+      try {
+        msg = JSON.parse(event.data as string) as SnapshotMessage;
+      } catch (err) {
+        console.error('[allay] ignoring malformed websocket message:', err);
+        return;
+      }
+      this.options.onMessage(msg);
     });
 
     ws.addEventListener('close', () => {
