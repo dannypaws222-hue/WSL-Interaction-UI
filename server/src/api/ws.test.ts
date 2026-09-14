@@ -25,7 +25,12 @@ function fakeObservable<T>(initial: PollSnapshot<T>): Observable<T> & { emit: (s
   return state;
 }
 
-function buildPollers(): PollerMap & { hook: ReturnType<typeof fakeObservable<HookStatus>> } {
+function buildPollers(): PollerMap & {
+  hook: ReturnType<typeof fakeObservable<HookStatus>>;
+  mail: ReturnType<typeof fakeObservable<MailMessage[]>>;
+  rigs: ReturnType<typeof fakeObservable<RigSummary[]>>;
+  beads: ReturnType<typeof fakeObservable<BeadSummary[]>>;
+} {
   return {
     hook: fakeObservable<HookStatus>({ data: { target: 'mayor/', role: 'mayor', agent_bead_id: 'hq-mayor', has_work: false, is_wisp: false, next_action: '' }, lastSuccessAt: 1, lastError: null, isStale: false }),
     mail: fakeObservable<MailMessage[]>({ data: [], lastSuccessAt: 1, lastError: null, isStale: false }),
