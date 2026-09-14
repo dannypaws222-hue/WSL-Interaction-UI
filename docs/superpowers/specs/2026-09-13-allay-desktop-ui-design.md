@@ -169,3 +169,52 @@ Implemented as a real ACP client, not a raw stdio pipe:
 4. Nudge-bridge + ActivityView (Agents menu).
 5. Security hardening pass (auth token, Origin checks) before this is ever
    exposed beyond `localhost` loopback use.
+
+## Spike Results (Task 1)
+
+- Identity: **Inconclusive.** `gt mayor acp` failed before any agent
+  session could be created, so no evidence of a new-vs-reused identity was
+  produced either way. `gt agents list --json` also errored in this gt
+  version (1.2.1) with `Error: unknown flag: --json` (identical before and
+  after), so that would-be identity-diff data source was unavailable
+  regardless. `gt hook --json` (before and after) both showed
+  `"agent_bead_id": "hq-mayor"` — the live tmux Mayor's own identity —
+  unchanged, which only confirms the live Mayor's identity was untouched,
+  not what identity (if any) an ACP session would use.
+- Protocol framing/methods observed: newline-delimited JSON-RPC framing
+  was never exercised, because `gt mayor acp` exited (code=1, no signal)
+  immediately after startup, before responding to the `initialize`
+  request. The failure was a plain CLI error to stderr/stdout, not a
+  JSON-RPC error response:
+  `Error: agent 'claude' does not support ACP. Use an ACP-compatible agent
+  like 'opencode'.` This town's configured default agent is `claude`,
+  which `gt mayor acp` explicitly rejects at startup — it requires an
+  ACP-compatible agent alias (e.g. `opencode`) to be configured or passed
+  via `--agent`. No method names (`initialize`, `session/new`,
+  `session/prompt`) received any response, real or error, because the
+  process was already gone by the time the JSON-RPC layer would have
+  handled them; `session/new` and `session/prompt` were written to the
+  dead process's closed stdin pipe (harmlessly — no crash, no visible
+  effect).
+- Interference with live tmux Mayor: **none observed.** All four
+  before/after diffs (`gt agents list --json` output, `gt hook --json`,
+  `gt mail inbox --json`, `gt mayor status`) were byte-identical
+  (`diff` exit code 0, no output) — including `gt mayor status` still
+  reporting `Status: attached` throughout. The "pong" prompt never reached
+  any agent, live or otherwise, since the ACP subprocess had already
+  exited before `session/prompt` was sent.
+- Recommendation: **Inconclusive pending further investigation** — this
+  gates the ACP-bridge follow-up plan only, not this plan. On this town's
+  current configuration (`claude` as the default agent), `gt mayor acp`
+  cannot run at all, so the original question (separate identity vs.
+  reused live-Mayor identity) is untestable here without either
+  configuring an ACP-compatible agent (e.g. `opencode`) for this town or
+  passing `--agent opencode` explicitly — and even then, whether that
+  spins up an identity independent of the live tmux Mayor's `hq-mayor`
+  bead, or attempts to attach to/reuse it, remains unknown and must be
+  re-spiked before the ACP-bridge plan proceeds. The one thing this run
+  does establish: a failed/misconfigured `gt mayor acp` invocation is
+  safe — it fails fast at the CLI-argument/agent-capability check, before
+  touching any session, hook, or mail state, so re-running this spike
+  again (including with a different `--agent`) carries no observed risk
+  to the live Mayor.
