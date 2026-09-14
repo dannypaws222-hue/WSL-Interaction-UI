@@ -35,3 +35,14 @@ export interface BeadSummary {
   priority: number;
   issue_type: string;
 }
+
+export interface AgentSummary {
+  name: string;
+  address: string;
+  session: string;
+  role: string;
+  rig: string | null;
+  running: boolean;
+  state: string;
+  hasWork: boolean;
+}

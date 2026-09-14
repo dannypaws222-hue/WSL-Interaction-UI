@@ -1,5 +1,5 @@
 import { safeExec } from './exec.js';
-import type { HookStatus, MailMessage, RigSummary } from './types.js';
+import type { AgentSummary, HookStatus, MailMessage, RigSummary } from './types.js';
 
 function parseHookStatus(raw: string): HookStatus {
   const value = JSON.parse(raw);
@@ -38,4 +38,46 @@ export async function getMailInbox(): Promise<MailMessage[]> {
 
 export async function getRigList(): Promise<RigSummary[]> {
   return parseRigList(await safeExec('gt', ['rig', 'list', '--json']));
+}
+
+interface RawAgent {
+  name: string;
+  address: string;
+  session: string;
+  role: string;
+  running: boolean;
+  state: string;
+  has_work: boolean;
+}
+
+function toAgentSummary(agent: RawAgent, rig: string | null): AgentSummary {
+  return {
+    name: agent.name,
+    address: agent.address,
+    session: agent.session,
+    role: agent.role,
+    rig,
+    running: agent.running,
+    state: agent.state,
+    hasWork: agent.has_work,
+  };
+}
+
+function parseAgents(raw: string): AgentSummary[] {
+  const value = JSON.parse(raw);
+  if (
+    typeof value !== 'object' || value === null ||
+    !Array.isArray(value.agents) || !Array.isArray(value.rigs)
+  ) {
+    throw new Error(`gt status --json returned an unexpected shape: ${raw.slice(0, 200)}`);
+  }
+  const town = (value.agents as RawAgent[]).map((a) => toAgentSummary(a, null));
+  const rigAgents = (value.rigs as Array<{ name: string; agents?: RawAgent[] }>).flatMap((rig) =>
+    Array.isArray(rig.agents) ? rig.agents.map((a) => toAgentSummary(a, rig.name)) : []
+  );
+  return [...town, ...rigAgents];
+}
+
+export async function getAgents(): Promise<AgentSummary[]> {
+  return parseAgents(await safeExec('gt', ['status', '--json']));
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import * as execModule from './exec.js';
-import { getHook, getMailInbox, getRigList } from './gt.js';
+import { getHook, getMailInbox, getRigList, getAgents } from './gt.js';
 
 describe('gt.ts', () => {
   it('getHook() calls `gt hook --json` and parses the result', async () => {
@@ -48,5 +48,43 @@ describe('gt.ts', () => {
   it('rejects when the CLI returns malformed JSON', async () => {
     vi.spyOn(execModule, 'safeExec').mockResolvedValue('not json');
     await expect(getHook()).rejects.toThrow();
+  });
+
+  it('getAgents() flattens town-level and rig-level agents, tagging rig', async () => {
+    vi.spyOn(execModule, 'safeExec').mockResolvedValue(JSON.stringify({
+      agents: [
+        { name: 'mayor', address: 'mayor/', session: 'hq-mayor', role: 'coordinator', running: true, state: 'idle', has_work: false },
+      ],
+      rigs: [
+        {
+          name: 'allay',
+          agents: [
+            { name: 'witness', address: 'allay/witness', session: 'al-witness', role: 'witness', running: true, state: 'idle', has_work: false },
+          ],
+        },
+      ],
+      tmux: { socket: 'gt-f96c12', socket_path: '/tmp/tmux-1000/gt-f96c12' },
+    }));
+
+    const result = await getAgents();
+    expect(execModule.safeExec).toHaveBeenCalledWith('gt', ['status', '--json']);
+    expect(result).toEqual([
+      { name: 'mayor', address: 'mayor/', session: 'hq-mayor', role: 'coordinator', rig: null, running: true, state: 'idle', hasWork: false },
+      { name: 'witness', address: 'allay/witness', session: 'al-witness', role: 'witness', rig: 'allay', running: true, state: 'idle', hasWork: false },
+    ]);
+  });
+
+  it('getAgents() handles a rig with no agents field gracefully', async () => {
+    vi.spyOn(execModule, 'safeExec').mockResolvedValue(JSON.stringify({
+      agents: [],
+      rigs: [{ name: 'empty-rig' }],
+      tmux: { socket: 'x', socket_path: '/tmp/x' },
+    }));
+    await expect(getAgents()).resolves.toEqual([]);
+  });
+
+  it('getAgents() rejects when the CLI returns an unexpected shape', async () => {
+    vi.spyOn(execModule, 'safeExec').mockResolvedValue(JSON.stringify({ agents: 'not-an-array', rigs: [] }));
+    await expect(getAgents()).rejects.toThrow(/unexpected shape/i);
   });
 });
