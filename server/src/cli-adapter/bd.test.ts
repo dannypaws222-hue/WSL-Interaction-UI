@@ -9,14 +9,14 @@ describe('bd.ts', () => {
     ]));
 
     const result = await listIssues();
-    expect(execModule.safeExec).toHaveBeenCalledWith('bd', ['list', '--json'], { cwd: '/home/danny/gt' });
+    expect(execModule.safeExec).toHaveBeenCalledWith('bd', ['list', '--json']);
     expect(result[0].id).toBe('al-1');
   });
 
   it('listIssues({ status }) appends a --status flag', async () => {
     vi.spyOn(execModule, 'safeExec').mockResolvedValue('[]');
     await listIssues({ status: 'open' });
-    expect(execModule.safeExec).toHaveBeenCalledWith('bd', ['list', '--json', '--status=open'], { cwd: '/home/danny/gt' });
+    expect(execModule.safeExec).toHaveBeenCalledWith('bd', ['list', '--json', '--status=open']);
   });
 
   it('listIssues() rejects when the CLI returns an object instead of an array', async () => {

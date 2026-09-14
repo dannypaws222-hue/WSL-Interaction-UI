@@ -16,5 +16,5 @@ function parseBeadList(raw: string): BeadSummary[] {
 export async function listIssues(filter: ListIssuesFilter = {}): Promise<BeadSummary[]> {
   const args = ['list', '--json'];
   if (filter.status) args.push(`--status=${filter.status}`);
-  return parseBeadList(await safeExec('bd', args, { cwd: process.env.TOWN_ROOT || '/home/danny/gt' }));
+  return parseBeadList(await safeExec('bd', args));
 }
