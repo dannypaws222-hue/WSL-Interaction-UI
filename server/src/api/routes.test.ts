@@ -1,6 +1,6 @@
 import request from 'supertest';
 import express from 'express';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createApiRouter, type PollerMap } from './routes.js';
 import type { PollSnapshot } from '../poll-scheduler/poller.js';
 import type { HookStatus, MailMessage, RigSummary, BeadSummary, AgentSummary } from '../cli-adapter/types.js';
@@ -24,7 +24,7 @@ describe('createApiRouter', () => {
 
   function buildApp() {
     const app = express();
-    app.use('/api', createApiRouter(buildPollers(), () => token));
+    app.use('/api', createApiRouter(buildPollers(), () => token, vi.fn()));
     return app;
   }
 
@@ -48,5 +48,54 @@ describe('createApiRouter', () => {
     const res = await request(buildApp()).get('/api/status/agents').set('x-allay-token', token);
     expect(res.status).toBe(200);
     expect(res.body.data[0].session).toBe('hq-mayor');
+  });
+});
+
+describe('GET /api/agents/:session/pane', () => {
+  const token = 'test-token';
+
+  function buildAppWithPane(capturePane: (session: string, lines?: number) => Promise<string>) {
+    const app = express();
+    app.use('/api', createApiRouter(buildPollers(), () => token, capturePane));
+    return app;
+  }
+
+  it('returns pane text for a known agent session', async () => {
+    const capturePane = vi.fn().mockResolvedValue('some pane output');
+    const res = await request(buildAppWithPane(capturePane))
+      .get('/api/agents/hq-mayor/pane')
+      .set('x-allay-token', token);
+
+    expect(res.status).toBe(200);
+    expect(res.body.session).toBe('hq-mayor');
+    expect(res.body.pane).toBe('some pane output');
+    expect(capturePane).toHaveBeenCalledWith('hq-mayor');
+  });
+
+  it('returns 404 for a session not in the current agents roster (no capturePane call)', async () => {
+    const capturePane = vi.fn();
+    const res = await request(buildAppWithPane(capturePane))
+      .get('/api/agents/not-a-real-session/pane')
+      .set('x-allay-token', token);
+
+    expect(res.status).toBe(404);
+    expect(capturePane).not.toHaveBeenCalled();
+  });
+
+  it('returns 401 without a valid token, before checking the session', async () => {
+    const capturePane = vi.fn();
+    const res = await request(buildAppWithPane(capturePane)).get('/api/agents/hq-mayor/pane');
+    expect(res.status).toBe(401);
+    expect(capturePane).not.toHaveBeenCalled();
+  });
+
+  it('returns 502 when capturePane itself fails', async () => {
+    const capturePane = vi.fn().mockRejectedValue(new Error('tmux not found'));
+    const res = await request(buildAppWithPane(capturePane))
+      .get('/api/agents/hq-mayor/pane')
+      .set('x-allay-token', token);
+
+    expect(res.status).toBe(502);
+    expect(res.body.error).toMatch(/tmux not found/);
   });
 });

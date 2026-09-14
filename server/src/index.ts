@@ -7,6 +7,7 @@ import { getOrCreateToken } from './auth/token.js';
 import { getHook, getMailInbox, getRigList, getAgents } from './cli-adapter/gt.js';
 import { listIssues } from './cli-adapter/bd.js';
 import { Poller } from './poll-scheduler/poller.js';
+import { capturePane } from './cli-adapter/tmux.js';
 
 const PORT = Number(process.env.ALLAY_PORT ?? 4317);
 const TOKEN_PATH = process.env.ALLAY_TOKEN_PATH ?? path.join(os.homedir(), '.allay', 'token');
@@ -27,7 +28,7 @@ pollers.rigs.start();
 pollers.beads.start();
 pollers.agents.start();
 
-const app = createApp(pollers, () => token);
+const app = createApp(pollers, () => token, capturePane);
 const server = createServer(app);
 attachSnapshotSocket(server, pollers, () => token);
 

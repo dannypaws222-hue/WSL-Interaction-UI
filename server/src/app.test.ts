@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createApp } from './app.js';
 import type { PollerMap } from './api/routes.js';
 
@@ -24,21 +24,28 @@ describe('createApp', () => {
   const token = 'test-token';
 
   it('responds to /healthz without requiring the token (Host is still checked by supertest\'s default 127.0.0.1 Host header)', async () => {
-    const app = createApp(buildPollers(), () => token);
+    const app = createApp(buildPollers(), () => token, vi.fn());
     const res = await request(app).get('/healthz');
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ status: 'ok' });
   });
 
   it('rejects /healthz when the Host header is not local', async () => {
-    const app = createApp(buildPollers(), () => token);
+    const app = createApp(buildPollers(), () => token, vi.fn());
     const res = await request(app).get('/healthz').set('Host', 'evil.example.com');
     expect(res.status).toBe(400);
   });
 
   it('serves /api routes behind the token', async () => {
-    const app = createApp(buildPollers(), () => token);
+    const app = createApp(buildPollers(), () => token, vi.fn());
     const res = await request(app).get('/api/status/hook').set('x-allay-token', token);
+    expect(res.status).toBe(200);
+  });
+
+  it('serves the agents pane route through the composed app', async () => {
+    const capturePane = vi.fn().mockResolvedValue('pane text');
+    const app = createApp(buildPollers(), () => token, capturePane);
+    const res = await request(app).get('/api/agents/hq-mayor/pane').set('x-allay-token', token);
     expect(res.status).toBe(200);
   });
 });
