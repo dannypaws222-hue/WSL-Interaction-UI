@@ -29,7 +29,28 @@ const app = createApp(pollers, () => token);
 const server = createServer(app);
 attachSnapshotSocket(server, pollers, () => token);
 
+server.on('error', (err) => {
+  console.error('[allay] server error:', err);
+  process.exit(1);
+});
+
+function shutdown(): void {
+  pollers.hook.stop();
+  pollers.mail.stop();
+  pollers.rigs.stop();
+  pollers.beads.stop();
+  server.close();
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+
 server.listen(PORT, '127.0.0.1', () => {
+  const clientUrl = `http://127.0.0.1:5173/?token=${token}`;
   console.log(`Allay server listening on http://127.0.0.1:${PORT} (loopback only)`);
-  console.log(`Open the client once with ?token=${token} — it's then remembered in localStorage.`);
+  console.log('This server does not serve the client — start it separately:');
+  console.log('  npm run dev --workspace client');
+  console.log('Then open the Vite dev server\'s printed URL (typically http://127.0.0.1:5173) with the token appended, e.g.:');
+  console.log(`  ${clientUrl}`);
+  console.log("The token is remembered in localStorage after the first load, so you only need the query param once.");
 });

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dashboard } from './components/Dashboard';
 import { SnapshotSocketClient, type SnapshotSocketStatus } from './api/snapshotSocket';
+import { resolveToken } from './api/client';
 import type { PollSnapshot, HookStatus, MailMessage, RigSummary, BeadSummary, SnapshotMessage } from './api/types';
 
 export function App() {
@@ -9,9 +10,10 @@ export function App() {
   const [rigs, setRigs] = useState<PollSnapshot<RigSummary[]> | null>(null);
   const [beads, setBeads] = useState<PollSnapshot<BeadSummary[]> | null>(null);
   const [status, setStatus] = useState<SnapshotSocketStatus>('connecting');
-  const clientRef = useRef<SnapshotSocketClient | null>(null);
+  const [hasToken] = useState<boolean>(() => resolveToken() !== null);
 
   useEffect(() => {
+    if (!hasToken) return;
     const client = new SnapshotSocketClient({
       baseWsUrl: '', // same-origin, proxied by Vite in dev
       onStatusChange: setStatus,
@@ -22,9 +24,19 @@ export function App() {
         if (msg.resource === 'beads') setBeads(msg.snapshot);
       },
     });
-    clientRef.current = client;
     return () => client.close();
-  }, []);
+  }, [hasToken]);
+
+  if (!hasToken) {
+    return (
+      <main>
+        <h1>Allay</h1>
+        <p role="alert">
+          No auth token found. Open this page with <code>?token=&lt;token&gt;</code> from the server's startup log.
+        </p>
+      </main>
+    );
+  }
 
   return (
     <main>
