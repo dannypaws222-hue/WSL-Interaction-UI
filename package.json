@@ -1,0 +1,8 @@
+{
+  "name": "allay",
+  "private": true,
+  "workspaces": ["server", "client"],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present"
+  }
+}
