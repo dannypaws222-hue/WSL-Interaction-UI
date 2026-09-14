@@ -12,5 +12,5 @@ liveDescribe('capturePane (live tmux contract)', () => {
 
     const pane = await capturePane(running!.session, 10);
     expect(typeof pane).toBe('string');
-  });
+  }, 20_000);
 });
