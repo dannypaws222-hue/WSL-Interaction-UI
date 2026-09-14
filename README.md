@@ -83,3 +83,23 @@ The Hook, Mail, and Rigs cards go through `gt` rather than `bd`, so they are
 not subject to this specific `bd` cwd/`.beads`-discovery limitation — but
 `gt` has its own environment/identity requirements (see `gt prime`), so make
 sure those are satisfied wherever you run the server too.
+
+## Agents
+
+The Agents card shows every agent in the town — mayor, deacon, and every
+rig's witness/refinery/polecats — with its name, role, rig, and current
+running/idle/working state, live-updated the same way the Hook/Mail/Rigs/Beads
+cards are.
+
+Clicking the name of a **running** agent opens a detail panel showing a
+recent snapshot of that agent's tmux pane (its terminal output), refreshed by
+polling every few seconds while the panel is open. A non-running agent's name
+is not clickable — there is no tmux session to capture, so the row simply
+shows "stopped" in the State column instead.
+
+This feature requires `tmux` to be on `PATH`, in addition to `gt`/`bd`. It
+also requires — same as the Beads card's requirement above — that the server
+be run from a location where `gt status --json` resolves the intended town's
+tmux socket; the pane capture shells out via `gt status --json`'s reported
+`tmux.socket_path`, so it is subject to the same `gt` environment/identity
+requirements as the Hook/Mail/Rigs cards.

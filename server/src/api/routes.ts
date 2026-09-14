@@ -37,7 +37,12 @@ export function createApiRouter(
       const pane = await capturePane(session);
       res.json({ session, pane, capturedAt: Date.now() });
     } catch (err) {
-      res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
+      // The real error (tmux command line, host socket path) is logged
+      // server-side only — apiFetch on the client discards the response
+      // body on a non-ok response anyway, so the client never sees this
+      // detail, and there's no reason to hand it to a would-be attacker.
+      console.error(`pane capture failed for session ${session}:`, err);
+      res.status(502).json({ error: 'pane capture failed' });
     }
   });
 

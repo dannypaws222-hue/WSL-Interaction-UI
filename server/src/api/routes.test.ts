@@ -89,13 +89,19 @@ describe('GET /api/agents/:session/pane', () => {
     expect(capturePane).not.toHaveBeenCalled();
   });
 
-  it('returns 502 when capturePane itself fails', async () => {
-    const capturePane = vi.fn().mockRejectedValue(new Error('tmux not found'));
+  it('returns a generic 502 body when capturePane itself fails, logging the real error server-side', async () => {
+    const capturePane = vi.fn().mockRejectedValue(new Error('tmux not found at /tmp/tmux-1000/gt-f96c12'));
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
     const res = await request(buildAppWithPane(capturePane))
       .get('/api/agents/hq-mayor/pane')
       .set('x-allay-token', token);
 
     expect(res.status).toBe(502);
-    expect(res.body.error).toMatch(/tmux not found/);
+    expect(res.body).toEqual({ error: 'pane capture failed' });
+    expect(res.body.error).not.toMatch(/tmux not found/);
+    expect(consoleErrorSpy).toHaveBeenCalled();
+
+    consoleErrorSpy.mockRestore();
   });
 });
