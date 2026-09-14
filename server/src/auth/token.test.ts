@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import express from 'express';
@@ -37,6 +37,13 @@ describe('getOrCreateToken', () => {
     writeFileSync(filePath, '');
     const token = getOrCreateToken(filePath);
     expect(token).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('leaves the file at mode 0600 when regenerating an empty existing file', () => {
+    const filePath = join(dir, 'token');
+    writeFileSync(filePath, '');
+    getOrCreateToken(filePath);
+    expect(statSync(filePath).mode & 0o777).toBe(0o600);
   });
 });
 

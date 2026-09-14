@@ -1,5 +1,5 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { IncomingMessage } from 'node:http';
 import type { Request, Response, NextFunction } from 'express';
@@ -27,8 +27,12 @@ export function getOrCreateToken(filePath: string): string {
       // The file exists but is still empty — not a race winner, just a
       // pre-existing empty file. Populate it directly (no longer
       // exclusive, since we've established there's no real token to race
-      // against).
-      writeFileSync(filePath, token, { mode: 0o600 });
+      // against). writeFileSync's `mode` option only applies to a file it
+      // actually creates — since this file already exists, we must chmod
+      // explicitly or the secret token would be left at the file's
+      // existing (likely world/group-readable) permission bits.
+      writeFileSync(filePath, token);
+      chmodSync(filePath, 0o600);
       return token;
     }
     throw err;
